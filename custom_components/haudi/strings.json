@@ -1,0 +1,80 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to myAudi",
+        "description": "Select your region and optionally enter your S-PIN for remote lock/unlock.",
+        "data": {
+          "spin": "S-PIN (Security PIN)",
+          "region": "Region"
+        },
+        "data_description": {
+          "spin": "Required for remote lock/unlock. Leave empty if not needed."
+        }
+      },
+      "callback": {
+        "title": "Authenticate with myAudi",
+        "description": "1. Open the link below in your browser:\n\n[Log in to myAudi]({authorize_url})\n\n2. Log in with your myAudi credentials.\n3. After login, your browser will try to open a `myaudi:///` link and show an error — this is expected.\n4. Copy the **full URL** from your browser's address bar and paste it below.",
+        "data": {
+          "redirect_url": "Redirect URL"
+        },
+        "data_description": {
+          "redirect_url": "Paste the full URL starting with myaudi:/// from your browser."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Authentication failed. The authorization code may have expired — try again.",
+      "cannot_connect": "Cannot connect to myAudi servers. Please try again later.",
+      "no_code": "Could not find an authorization code in the URL. Make sure you copied the full redirect URL.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "cannot_connect": "Cannot connect to myAudi servers."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "state_of_charge": { "name": "Battery" },
+      "fuel_level": { "name": "Fuel level" },
+      "range_electric": { "name": "Electric range" },
+      "range_total": { "name": "Total range" },
+      "mileage": { "name": "Mileage" },
+      "charge_power": { "name": "Charging power" },
+      "charge_rate": { "name": "Charge rate" },
+      "remaining_charge_time": { "name": "Remaining charge time" },
+      "charging_state": { "name": "Charging state" },
+      "charge_type": { "name": "Charge type" },
+      "climatisation_state": { "name": "Climatisation state" },
+      "oil_level": { "name": "Oil level" },
+      "remaining_climatisation_time": { "name": "Remaining climatisation time" }
+    },
+    "binary_sensor": {
+      "doors_locked": { "name": "Doors locked" },
+      "doors_closed": { "name": "Doors closed" },
+      "trunk_open": { "name": "Trunk" },
+      "hood_open": { "name": "Hood" },
+      "plug_connected": { "name": "Charging plug" },
+      "plug_locked": { "name": "Plug lock" },
+      "charging": { "name": "Charging" },
+      "lights_on": { "name": "Lights" },
+      "climatisation_active": { "name": "Climatisation" }
+    },
+    "device_tracker": {
+      "parking_position": { "name": "Parking position" }
+    },
+    "lock": {
+      "vehicle_lock": { "name": "Vehicle lock" }
+    },
+    "climate": {
+      "climatisation": { "name": "Climate control" }
+    },
+    "button": {
+      "force_refresh": { "name": "Force refresh" },
+      "vehicle_wakeup": { "name": "Vehicle wakeup" },
+      "start_climate": { "name": "Start climate" },
+      "stop_climate": { "name": "Stop climate" }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Haudi (myAudi Connect)",
+  "render_readme": true,
+  "domains": ["sensor", "binary_sensor", "device_tracker", "lock", "climate", "button"]
+}
