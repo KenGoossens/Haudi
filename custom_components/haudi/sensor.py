@@ -12,6 +12,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfEnergy,
@@ -23,7 +24,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import HaudiConfigEntry
+from .const import DOMAIN
 from .coordinator import HaudiVehicleData
 from .entity import HaudiEntity
 
@@ -145,11 +146,11 @@ SENSOR_DESCRIPTIONS: tuple[HaudiSensorDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: HaudiConfigEntry,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Haudi sensor entities."""
-    coordinator = entry.runtime_data
+    coordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[HaudiSensor] = []
 
     for vin in coordinator.vins:

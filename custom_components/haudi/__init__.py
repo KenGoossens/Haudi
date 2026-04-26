@@ -15,10 +15,14 @@ from .coordinator import HaudiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-type HaudiConfigEntry = ConfigEntry[HaudiCoordinator]
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the Haudi domain."""
+    hass.data.setdefault(DOMAIN, {})
+    return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: HaudiConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Haudi from a config entry."""
     session = async_get_clientsession(hass)
     region = entry.data.get(CONF_REGION, "emea")
@@ -40,10 +44,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: HaudiConfigEntry) -> boo
                 entry,
                 data={**entry.data, "tokens": tokens},
             )
-        except AuthError:
-            _LOGGER.exception(
-                "Token refresh failed – please re-authenticate via config flow"
+        except AuthError as err:
+            _LOGGER.error(
+                "Token refresh failed: %s – delete and re-add the integration", err
             )
+            return False
+        except Exception:
+            _LOGGER.exception("Unexpected error refreshing tokens")
             return False
 
     api = AudiAPI(session, auth, region)
@@ -59,7 +66,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: HaudiConfigEntry) -> boo
             vehicles = await api.get_vehicles()
             vins = []
             for v in vehicles:
-                vin = v.get("vin") or v.get("VIN") or v.get("vehicleIdentificationNumber", "")
+                if isinstance(v, dict):
+                    vin = (
+                        v.get("vin")
+                        or v.get("VIN")
+                        or v.get("vehicleIdentificationNumber", "")
+                    )
+                elif isinstance(v, str):
+                    vin = v
+                else:
+                    continue
                 if vin:
                     vins.append(vin)
             if vins:
@@ -75,10 +91,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: HaudiConfigEntry) -> boo
         _LOGGER.error("No vehicles found for this account")
         return False
 
+    _LOGGER.info("Haudi: found %d vehicle(s): %s", len(vins), vins)
+
     coordinator = HaudiCoordinator(hass, api, vins)
     await coordinator.async_config_entry_first_refresh()
 
-    entry.runtime_data = coordinator
+    hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -103,6 +121,9 @@ def _persist_tokens(
         )
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: HaudiConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+    return unload_ok

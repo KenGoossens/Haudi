@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import HaudiConfigEntry
+from .const import DOMAIN
 from .entity import HaudiEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,11 +40,11 @@ BUTTON_DESCRIPTIONS: tuple[ButtonEntityDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: HaudiConfigEntry,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Haudi button entities."""
-    coordinator = entry.runtime_data
+    coordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[HaudiButton] = []
 
     for vin in coordinator.vins:

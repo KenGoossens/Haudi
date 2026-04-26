@@ -4,20 +4,21 @@ from __future__ import annotations
 
 from homeassistant.components.device_tracker import SourceType
 from homeassistant.components.device_tracker.config_entry import TrackerEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import HaudiConfigEntry
+from .const import DOMAIN
 from .entity import HaudiEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: HaudiConfigEntry,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Haudi device tracker entities."""
-    coordinator = entry.runtime_data
+    coordinator = hass.data[DOMAIN][entry.entry_id]
     entities = [
         HaudiDeviceTracker(coordinator, vin) for vin in coordinator.vins
     ]

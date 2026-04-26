@@ -10,10 +10,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import HaudiConfigEntry
+from .const import DOMAIN
 from .coordinator import HaudiVehicleData
 from .entity import HaudiEntity
 
@@ -95,11 +96,11 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[HaudiBinarySensorDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: HaudiConfigEntry,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Haudi binary sensor entities."""
-    coordinator = entry.runtime_data
+    coordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[HaudiBinarySensor] = []
 
     for vin in coordinator.vins:

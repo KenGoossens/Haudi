@@ -11,11 +11,12 @@ from homeassistant.components.climate import (
     HVACAction,
     HVACMode,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import HaudiConfigEntry
+from .const import DOMAIN
 from .entity import HaudiEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,11 +24,11 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: HaudiConfigEntry,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Haudi climate entities."""
-    coordinator = entry.runtime_data
+    coordinator = hass.data[DOMAIN][entry.entry_id]
     entities = [
         HaudiClimate(coordinator, vin) for vin in coordinator.vins
     ]
