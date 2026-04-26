@@ -11,6 +11,9 @@ import aiohttp
 from .auth import AudiAuth, AuthError
 from .const import (
     BFF_BASE_URLS,
+    HEADER_USER_AGENT,
+    HEADER_X_APP_NAME,
+    HEADER_X_APP_VERSION,
     MBB_MAL_BASE_URL,
     MBB_OAUTH_BASE_URL,
     SPIN_COMPLETE_PATH,
@@ -101,9 +104,17 @@ class AudiAPI:
     async def get_vehicles(self) -> list[dict]:
         """Get list of vehicles associated with the account.
 
-        Tries the BFF user endpoint first, then falls back to MAL.
+        Tries multiple endpoints in order of reliability.
         """
-        # Try BFF user endpoint for vehicle list
+        # Method 1: GraphQL vehicle list (most reliable, used by audiconnect)
+        try:
+            vins = await self._get_vehicles_graphql()
+            if vins:
+                return vins
+        except Exception:
+            _LOGGER.debug("GraphQL vehicle list failed", exc_info=True)
+
+        # Method 2: BFF user endpoint
         url = f"{self._bff_base}/user/v1"
         try:
             result = await self._request("GET", url)
@@ -111,7 +122,6 @@ class AudiAPI:
                 vehicles = result.get("vehicles", [])
                 if vehicles:
                     return vehicles
-                # Some responses nest vehicles differently
                 user_data = result.get("data", result)
                 if isinstance(user_data, dict):
                     vehicles = user_data.get("vehicles", [])
@@ -131,6 +141,50 @@ class AudiAPI:
             _LOGGER.debug("MAL vehicle list failed")
 
         return []
+
+    async def _get_vehicles_graphql(self) -> list[dict]:
+        """Get vehicles via Audi GraphQL API."""
+        graphql_url = "https://app-api.live-my.audi.com/vgql/v1/graphql"
+
+        # Get AZS token first (Audi-specific token from IDK access_token)
+        azs_token = await self._auth.get_azs_token()
+        if not azs_token:
+            return []
+
+        headers = {
+            "Authorization": f"Bearer {azs_token}",
+            "User-Agent": HEADER_USER_AGENT,
+            "Accept": "application/json",
+            "Content-Type": "application/json; charset=utf-8",
+            "X-App-Version": HEADER_X_APP_VERSION,
+            "X-App-Name": HEADER_X_APP_NAME,
+        }
+
+        query = {
+            "query": (
+                "query vehicleList { userVehicles { vin mappingVin "
+                "vehicle { core { modelYear } media { shortName longName } } "
+                "csid commissionNumber type devicePlatform mbbConnect "
+                "userRole { role } nickname } }"
+            )
+        }
+
+        async with self._session.post(
+            graphql_url,
+            json=query,
+            headers=headers,
+        ) as resp:
+            if resp.status != 200:
+                _LOGGER.debug("GraphQL vehicle list returned %s", resp.status)
+                return []
+            result = await resp.json()
+
+        if "errors" in result:
+            _LOGGER.debug("GraphQL errors: %s", result["errors"])
+            return []
+
+        user_vehicles = (result.get("data") or {}).get("userVehicles", [])
+        return user_vehicles
 
     # --- Vehicle status ---
 

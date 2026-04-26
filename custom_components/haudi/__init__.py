@@ -55,22 +55,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     api = AudiAPI(session, auth, region)
 
-    # Get VIN list
+    # Get VIN list — should already be in config entry from config flow
     vins = entry.data.get(CONF_VIN, [])
     if isinstance(vins, str):
         vins = [vins]
 
     if not vins:
-        # Discover vehicles
+        # Try discovery as fallback
+        _LOGGER.debug("No VINs in config entry, trying discovery")
         try:
             vehicles = await api.get_vehicles()
-            vins = []
             for v in vehicles:
                 if isinstance(v, dict):
                     vin = (
                         v.get("vin")
                         or v.get("VIN")
                         or v.get("vehicleIdentificationNumber", "")
+                        or v.get("mappingVin", "")
                     )
                 elif isinstance(v, str):
                     vin = v
@@ -84,11 +85,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     data={**entry.data, CONF_VIN: vins},
                 )
         except Exception:
-            _LOGGER.exception("Failed to discover vehicles")
-            return False
+            _LOGGER.warning("Vehicle discovery failed")
 
     if not vins:
-        _LOGGER.error("No vehicles found for this account")
+        _LOGGER.error(
+            "No vehicles found. Delete and re-add the integration, "
+            "entering your VIN manually when prompted."
+        )
         return False
 
     _LOGGER.info("Haudi: found %d vehicle(s): %s", len(vins), vins)

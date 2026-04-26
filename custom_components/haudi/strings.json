@@ -20,13 +20,19 @@
         },
         "data_description": {
           "redirect_url": "Paste the full URL starting with myaudi:/// from your browser."
-        }
-      }
+        }      },
+      "vin": {
+        "title": "Enter your Vehicle Identification Number",
+        "description": "We could not automatically discover your vehicles. Please enter your VIN manually. You can find it in the myAudi app or on your vehicle registration.",
+        "data": {
+          "vin": "VIN (17 characters)"
+        }      }
     },
     "error": {
       "invalid_auth": "Authentication failed. The authorization code may have expired — try again.",
       "cannot_connect": "Cannot connect to myAudi servers. Please try again later.",
       "no_code": "Could not find an authorization code in the URL. Make sure you copied the full redirect URL.",
+      "invalid_vin": "Invalid VIN. It must be exactly 17 characters.",
       "unknown": "An unexpected error occurred."
     },
     "abort": {

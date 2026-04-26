@@ -288,6 +288,53 @@ class AudiAuth:
 
     # ── MBB bridge ───────────────────────────────────────────────────
 
+    async def get_azs_token(self) -> str | None:
+        """Get AZS (Audi Zugang Service) token for GraphQL API.
+
+        Exchanges the IDK access_token for an Audi-specific token.
+        """
+        access_token = self._tokens.get(TOKEN_ACCESS)
+        if not access_token:
+            return None
+
+        # Check cached AZS token
+        azs = self._tokens.get("azs_access_token")
+        azs_exp = self._tokens.get("azs_expires_at", 0)
+        if azs and time.time() < float(azs_exp) - 60:
+            return str(azs)
+
+        azs_url = self._bff_base + "/login/v1/audi/token"
+        json_data = {
+            "token": access_token,
+            "grant_type": "id_token",
+            "stage": "live",
+            "config": "myaudi",
+        }
+
+        try:
+            async with self._session.post(
+                azs_url,
+                json=json_data,
+                headers={
+                    **self._headers(),
+                    "Content-Type": "application/json; charset=utf-8",
+                },
+            ) as resp:
+                if resp.status != 200:
+                    _LOGGER.debug("AZS token request returned %s", resp.status)
+                    return None
+                result = await resp.json()
+        except Exception:
+            _LOGGER.debug("AZS token request failed", exc_info=True)
+            return None
+
+        azs_token = result.get("access_token", "")
+        self._tokens["azs_access_token"] = azs_token
+        self._tokens["azs_expires_at"] = time.time() + float(
+            result.get("expires_in", 3600)
+        )
+        return azs_token
+
     async def _register_mbb_client(self) -> str | None:
         """Register a mobile client with MBB to get a dynamic client_id."""
         url = MBB_OAUTH_BASE_URL + MBB_REGISTER_PATH

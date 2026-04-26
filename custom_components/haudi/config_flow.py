@@ -22,7 +22,8 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .auth import AudiAuth, AuthError, PKCEState, extract_code_from_url
-from .const import CONF_REGION, CONF_SPIN, DOMAIN, REGIONS
+from .api import AudiAPI
+from .const import CONF_REGION, CONF_SPIN, CONF_VIN, DOMAIN, REGIONS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class HaudiConfigFlow(ConfigFlow, domain=DOMAIN):
         self._pkce: PKCEState | None = None
         self._region: str = "emea"
         self._spin: str | None = None
+        self._tokens: dict = {}
 
     # ── Step 1: region + optional SPIN ───────────────────────────────
 
@@ -114,23 +116,39 @@ class HaudiConfigFlow(ConfigFlow, domain=DOMAIN):
                     _LOGGER.exception("Unexpected error during token exchange")
                     errors["base"] = "unknown"
                 else:
-                    # Prevent duplicate entries – unique per refresh token
-                    unique = tokens.get("refresh_token", "")
-                    if unique:
-                        await self.async_set_unique_id(str(hash(unique)))
-                        self._abort_if_unique_id_configured()
+                    self._tokens = tokens
 
-                    data: dict[str, Any] = {
-                        CONF_REGION: self._region,
-                        "tokens": tokens,
-                    }
-                    if self._spin:
-                        data[CONF_SPIN] = self._spin
+                    # Try to discover vehicles automatically
+                    session = async_get_clientsession(self.hass)
+                    api = AudiAPI(session, self._auth, self._region)
+                    vins: list[str] = []
+                    try:
+                        vehicles = await api.get_vehicles()
+                        for v in vehicles:
+                            if isinstance(v, dict):
+                                vin = (
+                                    v.get("vin")
+                                    or v.get("VIN")
+                                    or v.get("mappingVin", "")
+                                )
+                            elif isinstance(v, str):
+                                vin = v
+                            else:
+                                continue
+                            if vin:
+                                vins.append(vin)
+                    except Exception:
+                        _LOGGER.debug(
+                            "Vehicle discovery failed, will ask for VIN",
+                            exc_info=True,
+                        )
 
-                    return self.async_create_entry(
-                        title="myAudi",
-                        data=data,
-                    )
+                    if vins:
+                        _LOGGER.info("Discovered vehicles: %s", vins)
+                        return self._create_entry(vins)
+
+                    # No vehicles found — ask user for VIN
+                    return await self.async_step_vin()
 
         return self.async_show_form(
             step_id="callback",
@@ -138,5 +156,45 @@ class HaudiConfigFlow(ConfigFlow, domain=DOMAIN):
                 {vol.Required("redirect_url"): str}
             ),
             errors=errors,
+        )
+
+    # ── Step 4 (if needed): user enters VIN manually ─────────────────
+
+    async def async_step_vin(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask user for VIN if auto-discovery failed."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            vin = user_input.get(CONF_VIN, "").strip().upper()
+            if len(vin) != 17:
+                errors[CONF_VIN] = "invalid_vin"
+            else:
+                return self._create_entry([vin])
+
+        return self.async_show_form(
+            step_id="vin",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_VIN): str}
+            ),
+            errors=errors,
+        )
+
+    # ── Create config entry ──────────────────────────────────────────
+
+    def _create_entry(self, vins: list[str]) -> ConfigFlowResult:
+        """Create the config entry with tokens and VINs."""
+        data: dict[str, Any] = {
+            CONF_REGION: self._region,
+            CONF_VIN: vins,
+            "tokens": self._tokens,
+        }
+        if self._spin:
+            data[CONF_SPIN] = self._spin
+
+        return self.async_create_entry(
+            title=f"myAudi ({', '.join(vins)})",
+            data=data,
         )
 
