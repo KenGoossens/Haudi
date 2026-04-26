@@ -36,10 +36,13 @@ BFF_BASE_URLS = {
 }
 
 # --- IDK (Identity Kit) ---
-OIDC_CONFIG_PATH = "/auth/v1/idk/oidc/openid-configuration"
+OIDC_CONFIG_PATH = "/login/v1/idk/openid-configuration"
 IDK_LOGIN_PATH = "/login/v1/audi"
 
-IDK_SCOPES = "openid address badge birthplace nationality email phone name mbb"
+IDK_SCOPES = (
+    "address profile badge birthdate birthplace nationalIdentifier nationality "
+    "profession email vin phone nickname name picture mbb gallery openid"
+)
 IDK_REDIRECT_URI = "myaudi:///"
 IDK_RESPONSE_TYPE_AUTH = "code"
 IDK_RESPONSE_TYPE_TOKEN = "token id_token"
@@ -55,6 +58,7 @@ IDENTITY_PROVIDERS = {
 MBB_OAUTH_BASE_URL = "https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth"
 MBB_TOKEN_PATH = "/mobile/oauth2/v1/token"
 MBB_REVOKE_PATH = "/mobile/oauth2/v1/revoke"
+MBB_REGISTER_PATH = "/mobile/register/v1"
 MBB_SCOPE = "sc2:fal"
 
 # --- Vehicle API (BFF) ---
@@ -91,9 +95,14 @@ SPIN_PREPARE_PATH = "/rolesrights/authorization/v2/security-pin-auth-requested"
 SPIN_COMPLETE_PATH = "/rolesrights/authorization/v2/security-pin-auth-completed"
 
 # --- HTTP headers ---
-HEADER_USER_AGENT = "myAudi/5.2.2 (Android)"
+HEADER_USER_AGENT = (
+    "Android/4.31.0 (Build 800341641.root project "
+    "'myaudi_android'.ext.buildTime) Android/13"
+)
 HEADER_ACCEPT = "application/json"
 HEADER_CONTENT_TYPE = "application/json"
+HEADER_X_APP_VERSION = "4.31.0"
+HEADER_X_APP_NAME = "myAudi"
 
 # --- Update interval ---
 DEFAULT_UPDATE_INTERVAL = 300  # 5 minutes
